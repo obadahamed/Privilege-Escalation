@@ -35,7 +35,7 @@
 
 ### 🔍 Check Permissions
 
-```bash
+``` bash
 sudo -l
 ```
 Look for commands that can be run without a password (NOPASSWD) or with environment variables preserved.
@@ -44,7 +44,7 @@ Look for commands that can be run without a password (NOPASSWD) or with environm
 If LD_PRELOAD is allowed and a binary like find is available via sudo, you can preload a malicious shared object to escalate privileges.
 
 1. Create the C payload:
-```c
+``` c
 #include <stdio.h>
 #include <sys/types.h>
 #include <stdlib.h>
